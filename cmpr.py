@@ -316,13 +316,33 @@ TOKEN = {
     "KEYWORD": 7
 }
 
+def is_letter(x):
+    x = x.lower()
+    return ord(x) >= ord('a') and ord(x) <= ord('z')
+
+def is_number(x):
+    return ord(x) >= ord('0') and ord(x) <= ord('9')
+
+def char_type(x):
+    if is_letter(x):
+        return 0
+    elif is_number(x):
+        return 1
+    else:
+        return 2
+
 def gen_tokenize(src):
     tokens = []
     in_quote = False
     quote_delim = None
+    last_type = None
+    this_type = None
 
     for i, char in enumerate(src):
-        last_char = None
+        this_type = char_type(char)
+        if last_type == None:
+            last_type = this_type
+
         if i > 0: last_char = src[i - 1]
         if char in (['"', "'"] if not in_quote else [quote_delim]) and last_char != "\\":
             in_quote = not in_quote
@@ -340,23 +360,41 @@ def gen_tokenize(src):
             continue
 
         if len(tokens) == 0: tokens.append([ TOKEN["UNDEFINED"], "" ])
+    
+        if last_type != this_type:
+            tokens.append([ TOKEN["UNDEFINED"], "" ])
 
         tokens[-1][1] += char
 
     # second pass to turn SYMBOLs into KEYWORDs
     for i, token in enumerate(tokens):
-        if token[1] in KEYWORDS:
+        if token[1].strip() == "":
+            tokens[i] = None
+        elif token[1] in KEYWORDS:
             token[0] = TOKEN["KEYWORD"]
             tokens.append([ TOKEN["UNDEFINED"], "" ])
+        elif token[0] == TOKEN["UNDEFINED"]:
+            token[0] = TOKEN["SYMBOL"]
+            token[1] = token[1].strip()
 
-    if tokens[-1][0] == TOKEN["UNDEFINED"]: tokens.pop()
+    if tokens[-1] != None and tokens[-1][0] == TOKEN["UNDEFINED"]:
+        tokens.pop()
+    
+    filtered_tokens = []
+    for token in tokens:
+        if token == None: continue
+        filtered_tokens.append(token)
 
-    return tokens
+    return filtered_tokens
 
 def gen_compile_src(src):
     global sections
 
     tokens = gen_tokenize(src)
+    
+    print(tokens)
+
+    quit("TODO: parse tokens")
 
     sections = {}
     se_add("text", "global _start")
