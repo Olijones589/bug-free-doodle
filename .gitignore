@@ -2,3 +2,4 @@
 *\.o
 *tmp*
 *\.out
+__pycache__
