@@ -295,11 +295,26 @@ def gen_exit(code=0):
 
 def gen_max(reg): cmpr_set(reg, -1)
 
-TOKEN_UNDEFINED = 0
-TOKEN_ABSTRACT = 1
-TOKEN_SYMBOL = 2
-TOKEN_COMMENT = 3
-TOKEN_STRING = 4
+KEYWORDS = [
+	"if", "else", "do",
+	"then", "while", "for",
+	"function", "break", "continue",
+	"return", "local", "and",
+    "elseif", "end", "false", "true",
+    "in", "local", "nil",
+    "not", "or", "repeat"
+]
+
+TOKEN = {
+	"UNDEFINED": 0,
+	"ABSTRACT": 1,
+	"SYMBOL": 2,
+	"COMMENT": 3,
+	"STRING": 4,
+	"INTEGER": 5,
+	"FLOAT": 6,
+    "KEYWORD": 7
+}
 
 def gen_tokenize(src):
     tokens = []
@@ -311,18 +326,30 @@ def gen_tokenize(src):
         if i > 0: last_char = src[i - 1]
         if char in (['"', "'"] if not in_quote else [quote_delim]) and last_char != "\\":
             in_quote = not in_quote
-            tokens.append([ TOKEN_STRING if in_quote else TOKEN_UNDEFINED, "" ])
+            tokens.append([ TOKEN["STRING"] if in_quote else TOKEN["UNDEFINED"], "" ])
             quote_delim = char if in_quote else None
             continue
 
         if in_quote: 
-            tokens[-1] += char
+            tokens[-1][1] += char
             continue
 
         if char == "\n" or char == ";":
-            tokens.append([ TOKEN_ABSTRACT, "END_INSTRUCTION" ])
-            tokens.append([ TOKEN_UNDEFINED, "" ])
+            tokens.append([ TOKEN["ABSTRACT"], "END_INSTRUCTION" ])
+            tokens.append([ TOKEN["UNDEFINED"], "" ])
             continue
+
+        if len(tokens) == 0: tokens.append([ TOKEN["UNDEFINED"], "" ])
+
+        tokens[-1][1] += char
+
+    # second pass to turn SYMBOLs into KEYWORDs
+    for i, token in enumerate(tokens):
+        if token[1] in KEYWORDS:
+            token[0] = TOKEN["KEYWORD"]
+            tokens.append([ TOKEN["UNDEFINED"], "" ])
+
+    if tokens[-1][0] == TOKEN["UNDEFINED"]: tokens.pop()
 
     return tokens
 
@@ -335,7 +362,6 @@ def gen_compile_src(src):
     se_add("text", "global _start")
     se_add("text", "_start:")
     gen_set("rbp", "rsp")
-    gen_conprint(src)
     # gen_conprint("What's your name? ")
     #
     # gen_set("r14", cmpr_syscall("read", [codes["stdin"], "rsp", 64]))
